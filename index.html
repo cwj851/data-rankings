@@ -215,6 +215,11 @@ tailwind.config = {
       grid-template-columns: 1fr !important;
     }
   }
+  @media (min-width: 769px) and (max-width: 1024px) {
+    .cards-grid {
+      grid-template-columns: repeat(2, 1fr) !important;
+    }
+  }
 </style>
 </head>
 <body class="flex items-center justify-center min-h-screen p-5">
@@ -254,7 +259,7 @@ tailwind.config = {
     </div>
 
     <!-- 导航卡片 -->
-    <div class="cards-grid grid gap-5 md:gap-6" style="display:grid;grid-template-columns:repeat(2,1fr);">
+    <div class="cards-grid grid gap-5 md:gap-6" style="display:grid;grid-template-columns:repeat(3,1fr);">
 
       <!-- 卡片1：数据榜单 -->
       <a href="data-dashboard.html" class="nav-card card-dashboard rounded-2xl p-6 md:p-8 flex flex-col items-center text-center no-underline"
@@ -307,7 +312,8 @@ tailwind.config = {
         </span>
       </a>
 
-      <!-- 卡片4：获取用户ID（点击复制链接） -->
+      <!-- 卡片4：获取用户ID（暂时屏蔽） -->
+      <!--
       <div class="nav-card card-userid rounded-2xl p-6 md:p-8 flex flex-col items-center text-center cursor-pointer"
            style="background:rgba(206,147,216,0.06);opacity:0;animation:fadeUp 0.8s ease-out 0.6s forwards;"
            onclick="copyGetUserIdUrl(this)">
@@ -324,6 +330,7 @@ tailwind.config = {
           <i class="fa-solid fa-copy text-xs"></i> 点击复制链接
         </span>
       </div>
+      -->
 
     </div>
 
