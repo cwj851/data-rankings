@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>蚂蚁森林 · 绿色能量榜</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<script>
+tailwind.config={theme:{extend:{colors:{'forest-green':'#62C553','forest-dark':'#4A9E3F','energy-yellow':'#FFD700','sky-blue':'#87CEEB','soft-bg':'#F0F9F0'},animation:{'float':'float 3s ease-in-out infinite','slide-up':'slideUp 0.5s ease-out forwards','pulse-slow':'pulse 3s cubic-bezier(0.4,0,0.6,1) infinite'},keyframes:{float:{'0%,100%':{transform:'translateY(0)'},'50%':{transform:'translateY(-10px)'}},slideUp:{'0%':{opacity:'0',transform:'translateY(20px)'},'100%':{opacity:'1',transform:'translateY(0)'}}}}}}
+</script>
+<style>
+body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;background-color:#F0F9F0;overflow-x:hidden}
+.leaf{position:fixed;top:-10%;z-index:-1;opacity:0.5;animation:fall linear infinite}
+@keyframes fall{0%{transform:translate(0,0) rotate(0deg)}100%{transform:translate(80px,110vh) rotate(360deg)}}
+.card-glow:hover{box-shadow:0 0 15px rgba(98,197,83,0.4);transform:translateY(-5px)}
+.no-scrollbar::-webkit-scrollbar{display:none}
+.no-scrollbar{-ms-overflow-style:none;scrollbar-width:none}
+.rank-badge{position:absolute;top:-12px;left:-12px;width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;z-index:10;box-shadow:0 4px 12px rgba(0,0,0,0.12)}
+</style>
+</head>
+<body class="text-gray-700 relative">
+
+<div id="bg-animation"></div>
+
+<header class="sticky top-0 z-50 bg-white/90 backdrop-blur-md shadow-sm transition-all duration-300" id="navbar">
+  <div class="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
+    <div class="flex items-center gap-2">
+      <div class="w-10 h-10 bg-forest-green rounded-full flex items-center justify-center text-white animate-float">
+        <i class="fa-solid fa-tree"></i>
+      </div>
+      <h1 class="text-xl font-bold text-forest-dark tracking-wide">绿色能量榜</h1>
+      <span class="text-xs text-gray-400 ml-2" id="save-time-bar">数据截至：加载中...</span>
+    </div>
+  </div>
+  <div class="max-w-6xl mx-auto px-4 py-2 overflow-x-auto no-scrollbar flex gap-3" id="tab-container"></div>
+</header>
+
+<main class="max-w-6xl mx-auto px-4 py-6 min-h-screen">
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+    <div class="bg-white p-4 rounded-2xl shadow-sm border border-green-100 text-center">
+      <p class="text-xs text-gray-500 mb-1">累计种树</p>
+      <p class="text-2xl font-bold text-forest-dark" id="total-trees">0</p>
+    </div>
+    <div class="bg-white p-4 rounded-2xl shadow-sm border border-green-100 text-center">
+      <p class="text-xs text-gray-500 mb-1">总能量产生</p>
+      <p class="text-2xl font-bold text-forest-green" id="total-energy">0</p>
+    </div>
+    <div class="bg-white p-4 rounded-2xl shadow-sm border border-green-100 text-center">
+      <p class="text-xs text-gray-500 mb-1">保护地面积</p>
+      <p class="text-2xl font-bold text-sky-blue" id="total-protect">0</p>
+    </div>
+    <div class="bg-white p-4 rounded-2xl shadow-sm border border-green-100 text-center">
+      <p class="text-xs text-gray-500 mb-1">活跃用户数</p>
+      <p class="text-2xl font-bold text-orange-400" id="active-users">0</p>
+    </div>
+  </div>
+
+  <div id="rank-list" class="space-y-4"></div>
+  <div id="table-wrap" style="display:none" class="mt-4 overflow-x-auto rounded-2xl border border-gray-100 bg-white shadow-sm"></div>
+
+  <div class="flex justify-center gap-3 mt-6 flex-wrap" id="pagination"></div>
+</main>
+
+<div id="detail-modal" class="fixed inset-0 z-[60] hidden flex items-center justify-center bg-black/40 backdrop-blur-sm opacity-0 transition-opacity duration-300">
+  <div class="bg-white w-11/12 max-w-md rounded-3xl p-6 transform scale-95 transition-transform duration-300 relative shadow-2xl max-h-[90vh] overflow-y-auto">
+    <button onclick="closeModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 z-10">
+      <i class="fa-solid fa-xmark text-xl"></i>
+    </button>
+    <div class="text-center mb-6">
+      <div class="w-20 h-20 rounded-full mx-auto mb-3 flex items-center justify-center text-white text-3xl shadow-lg overflow-hidden" id="modal-avatar">
+        <i class="fa-solid fa-user"></i>
+      </div>
+      <h2 class="text-xl font-bold text-gray-800" id="modal-nickname">昵称</h2>
+      <p class="text-sm text-gray-500" id="modal-account">账号</p>
+      <p class="text-xs text-gray-400 mt-1" id="modal-userid">ID: -- (脱敏)</p>
+    </div>
+    <div class="grid grid-cols-2 gap-4 mb-6">
+      <div class="bg-green-50 p-3 rounded-xl text-center"><p class="text-xs text-gray-500">总能量</p><p class="font-bold text-forest-dark" id="modal-total-energy">0</p></div>
+      <div class="bg-yellow-50 p-3 rounded-xl text-center"><p class="text-xs text-gray-500">当前能量</p><p class="font-bold text-orange-500" id="modal-current-energy">0</p></div>
+      <div class="bg-blue-50 p-3 rounded-xl text-center"><p class="text-xs text-gray-500">拥有证书</p><p class="font-bold text-blue-600" id="modal-certs">0</p></div>
+      <div class="bg-purple-50 p-3 rounded-xl text-center"><p class="text-xs text-gray-500">守护动物</p><p class="font-bold text-purple-600" id="modal-animals">0</p></div>
+    </div>
+    <div class="space-y-3">
+      <h3 class="font-bold text-gray-700 text-sm">公益成就分布</h3>
+      <div class="flex justify-between items-center text-sm"><span class="text-gray-500"><i class="fa-solid fa-tree text-forest-green mr-2"></i>古树</span><span class="font-medium" id="modal-old-trees">0</span></div>
+      <div class="w-full bg-gray-100 rounded-full h-2"><div class="bg-forest-green h-2 rounded-full transition-all duration-700" style="width:0" id="bar-old-trees"></div></div>
+      <div class="flex justify-between items-center text-sm"><span class="text-gray-500"><i class="fa-solid fa-water text-sky-blue mr-2"></i>海洋</span><span class="font-medium" id="modal-ocean">0</span></div>
+      <div class="w-full bg-gray-100 rounded-full h-2"><div class="bg-sky-blue h-2 rounded-full transition-all duration-700" style="width:0" id="bar-ocean"></div></div>
+      <div class="flex justify-between items-center text-sm"><span class="text-gray-500"><i class="fa-solid fa-shield-halved text-orange-400 mr-2"></i>保护地</span><span class="font-medium" id="modal-protect">0</span></div>
+      <div class="w-full bg-gray-100 rounded-full h-2"><div class="bg-orange-400 h-2 rounded-full transition-all duration-700" style="width:0" id="bar-protect"></div></div>
+      <div class="flex justify-between items-center text-sm"><span class="text-gray-500"><i class="fa-solid fa-seedling text-green-400 mr-2"></i>森林</span><span class="font-medium" id="modal-forest">0</span></div>
+      <div class="w-full bg-gray-100 rounded-full h-2"><div class="bg-green-400 h-2 rounded-full transition-all duration-700" style="width:0" id="bar-forest"></div></div>
+    </div>
+    <div class="mt-4 pt-3 border-t border-gray-100 text-xs text-gray-400">
+      <div>昵称-支: <span id="modal-subname">--</span></div>
+    </div>
+  </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var userList=[];
+  var saveTime='';
+  var currentTab='总能量';
+  var currentPage=1;
+  var pageSize=20;
+  var tableSortField='总能量';
+  var tableSortAsc=false;
+
+  var tabs=[
+    {key:'总能量',label:'总能量榜',icon:'fa-bolt',color:'text-yellow-500'},
+    {key:'当前能量',label:'当前能量',icon:'fa-battery-full',color:'text-green-500'},
+    {key:'总证书',label:'证书成就',icon:'fa-certificate',color:'text-blue-500'},
+    {key:'古树',label:'古树守护',icon:'fa-tree',color:'text-forest-dark'},
+    {key:'动物',label:'动物保护',icon:'fa-paw',color:'text-purple-500'},
+    {key:'海洋',label:'海洋公益',icon:'fa-water',color:'text-cyan-500'},
+    {key:'森林',label:'植树造林',icon:'fa-seedling',color:'text-emerald-500'}
+  ];
+
+  function maskUserId(v){
+    if(!v||typeof v!=='string')return v;
+    if(v.length>=8)return v.substring(0,3)+'****'+v.substring(v.length-4);
+    if(v.length>=4)return v.substring(0,1)+'**'+v.substring(v.length-1);
+    return '***';
+  }
+
+  function fmtNum(n){
+    if(typeof n!=='number')return String(n);
+    if(n>=10000)return (n/10000).toFixed(1)+'w';
+    return n.toLocaleString();
+  }
+
+  function fmtFull(n){
+    if(typeof n!=='number')return String(n);
+    return n.toLocaleString();
+  }
+
+  function renderTabs(){
+    var container=document.getElementById('tab-container');
+    container.innerHTML=tabs.map(function(t,i){
+      return '<button onclick="switchTab(\''+t.key+'\')" class="px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all duration-300 '+(currentTab===t.key?'bg-forest-green text-white shadow-md':'bg-white text-gray-600 hover:bg-gray-100')+'"><i class="fa-solid '+t.icon+' mr-1"></i> '+t.label+'</button>';
+    }).join('');
+    container.innerHTML+='<button onclick="switchTab(\'all\')" class="px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all duration-300 '+(currentTab==='all'?'bg-forest-green text-white shadow-md':'bg-white text-gray-600 hover:bg-gray-100')+'"><i class="fa-solid fa-table-list mr-1"></i> 全部数据</button>';
+  }
+
+  window.switchTab=function(key){
+    currentTab=key;
+    currentPage=1;
+    renderTabs();
+    if(key==='all')renderTable();
+    else renderList();
+  };
+
+  function getSorted(){
+    var arr=userList.slice();
+    var sortKey=currentTab==='all'?tableSortField:currentTab;
+    var asc=currentTab==='all'?tableSortAsc:false;
+    arr.sort(function(a,b){
+      var va=a[sortKey]||0,vb=b[sortKey]||0;
+      if(typeof va==='string'){va=va.toLowerCase();vb=vb.toLowerCase();return asc?va.localeCompare(vb):vb.localeCompare(va);}
+      return asc?va-vb:vb-va;
+    });
+    return arr;
+  }
+
+  function renderList(){
+    var sorted=getSorted();
+    var totalPages=Math.ceil(sorted.length/pageSize)||1;
+    if(currentPage>totalPages)currentPage=totalPages;
+    var start=(currentPage-1)*pageSize;
+    var pageData=sorted.slice(start,start+pageSize);
+    var maxVal=sorted.length>0?sorted[0][currentTab]:1;
+    var container=document.getElementById('rank-list');
+    container.style.display='';
+    document.getElementById('table-wrap').style.display='none';
+    var tab=tabs.find(function(t){return t.key===currentTab;});
+
+    container.innerHTML=pageData.map(function(user,idx){
+      var rank=start+idx+1;
+      var rankBadge='';
+      var cardClass='bg-white border border-gray-100';
+      if(rank===1){rankBadge='<div class="rank-badge bg-yellow-400 text-white animate-pulse-slow"><i class="fa-solid fa-trophy"></i></div>';cardClass='bg-gradient-to-br from-yellow-50 to-white border-yellow-200';}
+      else if(rank===2){rankBadge='<div class="rank-badge bg-gray-300 text-white">2</div>';cardClass='bg-gradient-to-br from-gray-50 to-white border-gray-200';}
+      else if(rank===3){rankBadge='<div class="rank-badge bg-orange-300 text-white">3</div>';cardClass='bg-gradient-to-br from-orange-50 to-white border-orange-200';}
+      else{rankBadge='<div class="rank-badge bg-white border-2 border-gray-200 text-gray-500 text-sm">'+rank+'</div>';}
+
+      var percent=Math.min((user[currentTab]/maxVal)*100,100);
+      var barColor=currentTab==='总能量'||currentTab==='当前能量'?'#facc15':currentTab==='总证书'?'#3b82f6':currentTab==='古树'?'#4A9E3F':currentTab==='动物'?'#a855f7':currentTab==='海洋'?'#06b6d4':currentTab==='森林'?'#10b981':'#62C553';
+
+      return '<div class="relative p-4 rounded-2xl shadow-sm card-glow transition-all duration-300 cursor-pointer '+cardClass+'" style="animation:slideUp 0.5s ease-out '+(idx*0.04)+'s backwards" onclick="showDetail(\''+user.userId+'\')">'+
+        rankBadge+
+        '<div class="flex items-center justify-between mb-3 pl-10">'+
+          '<div class="flex items-center gap-3 min-w-0">'+
+            '<div class="w-12 h-12 rounded-full flex items-center justify-center text-lg text-forest-dark flex-shrink-0 overflow-hidden">'+avatarHtml(user,48)+'</div>'+
+            '<div class="min-w-0">'+
+              '<h3 class="font-bold text-gray-800 text-lg truncate">'+esc(user.昵称)+'</h3>'+
+              '<p class="text-xs text-gray-400 truncate">'+esc(user['登录账号']||'--')+'</p>'+
+            '</div>'+
+          '</div>'+
+          '<div class="text-right flex-shrink-0 ml-3">'+
+            '<p class="text-2xl font-bold '+(tab?tab.color:'text-forest-dark')+'">'+fmtNum(user[currentTab])+'</p>'+
+            '<p class="text-xs text-gray-400">'+(tab?tab.label:currentTab)+'</p>'+
+          '</div>'+
+        '</div>'+
+        '<div class="pl-10">'+
+          '<div class="w-full bg-gray-100 rounded-full h-2 overflow-hidden">'+
+            '<div class="h-full rounded-full transition-all duration-1000 ease-out" style="width:0;background:'+barColor+'" data-width="'+percent+'%"></div>'+
+          '</div>'+
+          '<div class="flex justify-between mt-2 text-xs text-gray-400">'+
+            '<span>古树:'+fmtNum(user.古树)+'</span>'+
+            '<span>证书:'+fmtNum(user.总证书)+'</span>'+
+            '<span>动物:'+fmtNum(user.动物)+'</span>'+
+          '</div>'+
+        '</div>'+
+      '</div>';
+    }).join('');
+
+    setTimeout(function(){
+      document.querySelectorAll('[data-width]').forEach(function(el){el.style.width=el.getAttribute('data-width');});
+    },100);
+
+    renderPagination(totalPages,sorted.length);
+  }
+
+  function renderPagination(totalPages,totalFiltered){
+    var p=document.getElementById('pagination');
+    if(totalPages<=1){p.innerHTML='';return;}
+    var html='';
+    if(currentPage>1)html+='<button class="px-4 py-2 rounded-full bg-white text-gray-600 text-sm font-medium hover:bg-gray-100 transition" onclick="goPage('+(currentPage-1)+')"><i class="fa-solid fa-chevron-left mr-1"></i>上一页</button>';
+    var ms=5,ps=Math.max(1,currentPage-Math.floor(ms/2)),pe=Math.min(totalPages,ps+ms-1);
+    if(pe-ps<ms-1)ps=Math.max(1,pe-ms+1);
+    for(var i=ps;i<=pe;i++)html+='<button class="w-10 h-10 rounded-full text-sm font-semibold transition '+(i===currentPage?'bg-forest-green text-white shadow-md':'bg-white text-gray-500 hover:bg-gray-100')+'" onclick="goPage('+i+')">'+i+'</button>';
+    if(currentPage<totalPages)html+='<button class="px-4 py-2 rounded-full bg-white text-gray-600 text-sm font-medium hover:bg-gray-100 transition" onclick="goPage('+(currentPage+1)+')">下一页<i class="fa-solid fa-chevron-right ml-1"></i></button>';
+    p.innerHTML=html;
+  }
+
+  window.goPage=function(p){
+    var sorted=getSorted();
+    var total=Math.ceil(sorted.length/pageSize)||1;
+    if(p<1||p>total)return;
+    currentPage=p;
+    renderList();
+    window.scrollTo({top:document.getElementById('rank-list').offsetTop-120,behavior:'smooth'});
+  };
+
+  window.sortTable=function(field){
+    if(tableSortField===field)tableSortAsc=!tableSortAsc;
+    else{tableSortField=field;tableSortAsc=false;}
+    currentPage=1;
+    renderTable();
+  };
+
+  function renderTable(){
+    var sorted=getSorted();
+    var totalPages=Math.ceil(sorted.length/pageSize)||1;
+    if(currentPage>totalPages)currentPage=totalPages;
+    var start=(currentPage-1)*pageSize;
+    var pageData=sorted.slice(start,start+pageSize);
+
+    document.getElementById('rank-list').style.display='none';
+    var wrap=document.getElementById('table-wrap');
+    wrap.style.display='block';
+
+    var cols=[
+      {key:'头像',cls:'',isAvatar:true},
+      {key:'昵称',cls:'text-gray-800 font-semibold'},
+      {key:'总能量',cls:'text-amber-500 font-bold'},
+      {key:'当前能量',cls:'text-yellow-500 font-bold'},
+      {key:'总证书',cls:'text-blue-500 font-bold'},
+      {key:'古树',cls:'text-emerald-600 font-bold'},
+      {key:'动物',cls:'text-purple-500 font-bold'},
+      {key:'保护地',cls:'text-teal-500 font-bold'},
+      {key:'海洋',cls:'text-cyan-500 font-bold'},
+      {key:'森林',cls:'text-green-500 font-bold'},
+      {key:'userId',cls:'text-gray-400 text-xs'},
+      {key:'登录账号',cls:'text-gray-500'},
+    ];
+
+    var th='<tr><th style="width:36px">#</th>'+
+      cols.map(function(c){
+        var arrow='';
+        if(tableSortField===c.key)arrow=' <span style="color:#4a7a4a">'+(tableSortAsc?'▲':'▼')+'</span>';
+        if(c.isAvatar)return '<th style="width:40px"></th>';
+        return '<th onclick="sortTable(\''+c.key+'\')" style="cursor:pointer;user-select:none">'+(c.key==='userId'?'ID(脱敏)':c.key)+arrow+'</th>';
+      }).join('')+'</tr>';
+    var tb=pageData.map(function(u,i){
+      var rank=start+i+1;
+      var rowBg=rank===1?'#fefce8':rank===2?'#f8fafc':rank===3?'#fff7ed':'';
+      return '<tr style="background:'+rowBg+'"><td style="font-weight:700;color:#9aab9a;text-align:center">'+rank+'</td>'+
+        cols.map(function(c){
+          if(c.isAvatar)return '<td>'+avatarHtml(u,28)+'</td>';
+          var val=c.key==='userId'?maskUserId(u[c.key]):u[c.key];
+          if(c.key==='昵称')val=esc(String(val||'--'));
+          var display=typeof val==='number'?fmtFull(val):String(val||'--');
+          return '<td class="'+c.cls+'">'+display+'</td>';
+        }).join('')+
+      '</tr>';
+    }).join('');
+
+    wrap.innerHTML='<table style="width:100%;border-collapse:collapse;font-size:12px;min-width:1000px"><thead style="background:#f5faf5;position:sticky;top:0;z-index:1">'+th+'</thead><tbody>'+tb+'</tbody></table><style>#table-wrap td,#table-wrap th{padding:8px 10px;border-bottom:1px solid #f0f4f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#table-wrap td:first-child,#table-wrap th:first-child{padding:4px 6px;text-align:center;overflow:visible;text-overflow:clip}#table-wrap td:nth-child(2),#table-wrap th:nth-child(2){padding:4px 6px;overflow:visible;text-overflow:clip}#table-wrap th{font-weight:700;color:#5a7a5a;font-size:11px;text-transform:uppercase;letter-spacing:0.3px}#table-wrap tr:hover td{background:#f8fdf8}</style>';
+    renderPagination(totalPages,sorted.length);
+  }
+
+  function updateStats(){
+    var totalTrees=userList.reduce(function(a,c){return a+(c.森林||0)+(c.古树||0);},0);
+    var totalEnergy=userList.reduce(function(a,c){return a+(c.总能量||0);},0);
+    var totalProtect=userList.reduce(function(a,c){return a+(c.保护地||0);},0);
+    animateValue('total-trees',0,totalTrees,1500);
+    animateValue('total-energy',0,totalEnergy,1500);
+    animateValue('total-protect',0,totalProtect,1500);
+    document.getElementById('active-users').innerText=userList.length;
+  }
+
+  function animateValue(id,start,end,duration){
+    var obj=document.getElementById(id);
+    var startTs=null;
+    function step(ts){
+      if(!startTs)startTs=ts;
+      var progress=Math.min((ts-startTs)/duration,1);
+      obj.innerHTML=fmtNum(Math.floor(progress*(end-start)+start));
+      if(progress<1)requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+
+  window.showDetail=function(uid){
+    var user=userList.find(function(u){return u.userId===uid;});
+    if(!user)return;
+    document.getElementById('modal-nickname').innerText=user.昵称;
+    document.getElementById('modal-avatar').innerHTML=avatarHtml(user,80);
+    document.getElementById('modal-account').innerText=user['登录账号']||'--';
+    document.getElementById('modal-userid').innerText='ID: '+maskUserId(user.userId)+' (脱敏)';
+    document.getElementById('modal-subname').innerText=user['昵称-支']||'--';
+    document.getElementById('modal-total-energy').innerText=fmtNum(user.总能量);
+    document.getElementById('modal-current-energy').innerText=fmtNum(user.当前能量);
+    document.getElementById('modal-certs').innerText=fmtFull(user.总证书);
+    document.getElementById('modal-animals').innerText=fmtFull(user.动物);
+    document.getElementById('modal-old-trees').innerText=fmtFull(user.古树);
+    document.getElementById('modal-ocean').innerText=fmtFull(user.海洋);
+    document.getElementById('modal-protect').innerText=fmtFull(user.保护地);
+    document.getElementById('modal-forest').innerText=fmtFull(user.森林);
+    setTimeout(function(){
+      document.getElementById('bar-old-trees').style.width=Math.min((user.古树/800)*100,100)+'%';
+      document.getElementById('bar-ocean').style.width=Math.min((user.海洋/500)*100,100)+'%';
+      document.getElementById('bar-protect').style.width=Math.min((user.保护地/600)*100,100)+'%';
+      document.getElementById('bar-forest').style.width=Math.min((user.森林/2000)*100,100)+'%';
+    },100);
+    var modal=document.getElementById('detail-modal');
+    modal.classList.remove('hidden');
+    setTimeout(function(){modal.classList.remove('opacity-0');modal.querySelector('div').classList.remove('scale-95');modal.querySelector('div').classList.add('scale-100');},10);
+  };
+
+  window.closeModal=function(){
+    var modal=document.getElementById('detail-modal');
+    modal.classList.add('opacity-0');
+    modal.querySelector('div').classList.remove('scale-100');
+    modal.querySelector('div').classList.add('scale-95');
+    setTimeout(function(){modal.classList.add('hidden');},300);
+  };
+
+  document.getElementById('detail-modal').addEventListener('click',function(e){if(e.target.id==='detail-modal')closeModal();});
+  document.addEventListener('keydown',function(e){if(e.key==='Escape')closeModal();});
+
+  function initBackground(){
+    var container=document.getElementById('bg-animation');
+    for(var i=0;i<15;i++){
+      var leaf=document.createElement('div');
+      leaf.classList.add('leaf');
+      leaf.innerHTML='<i class="fa-solid fa-leaf text-green-300"></i>';
+      leaf.style.left=Math.random()*100+'vw';
+      leaf.style.animationDuration=(Math.random()*10+10)+'s';
+      leaf.style.fontSize=(Math.random()*20+10)+'px';
+      leaf.style.animationDelay=Math.random()*5+'s';
+      container.appendChild(leaf);
+    }
+  }
+
+  function processData(data){
+    if(Array.isArray(data)){userList=data;}
+    else if(typeof data==='object'&&data!==null){
+      if(data['保存时间'])saveTime=data['保存时间'];
+      document.getElementById('save-time-bar').textContent='数据截至：'+(saveTime||'--');
+      var arr=data['userBaseInfoList']||data['data']||data['list']||[];
+      if(arr.length>0){userList=arr;}
+      else{
+        var keys=Object.keys(data);
+        for(var i=0;i<keys.length;i++){if(Array.isArray(data[keys[i]])&&data[keys[i]].length>0){userList=data[keys[i]];break;}}
+      }
+    }
+    if(userList.length===0){alert('未找到有效数据');return;}
+    initBackground();
+    renderTabs();
+    renderList();
+    updateStats();
+  }
+
+  function autoLoad(){
+    fetch('./森林数据.json',{cache:'no-store'})
+      .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
+      .then(function(d){processData(d);})
+      .catch(function(){
+        var xhr=new XMLHttpRequest();
+        xhr.open('GET','./森林数据.json',true);
+        xhr.onload=function(){if(xhr.status===200||xhr.status===0){try{processData(JSON.parse(xhr.responseText));}catch(e){fallback();}}else{fallback();}};
+        xhr.onerror=function(){fallback();};
+        xhr.send();
+      });
+  }
+
+  function fallback(){
+    document.getElementById('rank-list').innerHTML='<div class="text-center py-20"><p class="text-gray-400 text-lg mb-2">未能自动加载数据</p><p class="text-gray-300 text-sm mb-4">请运行 <code class="bg-gray-100 px-2 py-1 rounded">python3 -m http.server 8000</code></p><input type="file" id="fbInput" accept=".json" style="display:none"><button onclick="document.getElementById(\'fbInput\').click()" class="bg-forest-green text-white px-6 py-2 rounded-full font-medium hover:bg-forest-dark transition">手动选择 JSON 文件</button></div>';
+    document.getElementById('fbInput').addEventListener('change',function(e){var f=e.target.files[0];if(!f)return;var r=new FileReader();r.onload=function(ev){try{processData(JSON.parse(ev.target.result));}catch(err){alert('JSON解析失败');}};r.readAsText(f);});
+  }
+
+  function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+
+  function avatarHtml(user,size){
+    var s=size||40;
+    if(user.头像) return '<img src="'+esc(user.头像)+'" referrerpolicy="no-referrer" style="display:block;width:'+s+'px;height:'+s+'px;border-radius:50%;object-fit:cover;flex-shrink:0" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'inline-flex\'"><span style="display:none;width:'+s+'px;height:'+s+'px;border-radius:50%;background:linear-gradient(135deg,#d4f0d4,#a8d5a8);align-items:center;justify-content:center;font-size:'+(s*0.45)+'px;color:#3a7a3a">&nbsp;<i class="fa-solid fa-user"></i>&nbsp;</span>';
+    return '<span style="display:inline-flex;width:'+s+'px;height:'+s+'px;border-radius:50%;background:linear-gradient(135deg,#d4f0d4,#a8d5a8);align-items:center;justify-content:center;font-size:'+(s*0.45)+'px;color:#3a7a3a;flex-shrink:0"><i class="fa-solid fa-user"></i></span>';
+  }
+
+  autoLoad();
+})();
+</script>
+</body>
+</html>
