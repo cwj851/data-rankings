@@ -334,19 +334,19 @@ tailwind.config = {
 
     </div>
 
-    <!-- 底部统计 -->
+    <!-- 底部统计（不蒜子） -->
     <div class="footer-stats">
-      <div class="stat-item">
+      <div class="stat-item" id="busuanzi_container_page_pv" style="display:none;">
         <i class="fa-solid fa-eye"></i>
         <span>本页访问：</span>
-        <span id="footerVisits">--</span>
+        <span id="busuanzi_value_page_pv">--</span>
         <span>次</span>
       </div>
       <span style="color:rgba(160,200,160,0.25);">|</span>
-      <div class="stat-item">
+      <div class="stat-item" id="busuanzi_container_site_pv" style="display:none;">
         <i class="fa-solid fa-globe"></i>
         <span>总访问：</span>
-        <span id="footerTotalVisits">--</span>
+        <span id="busuanzi_value_site_pv">--</span>
         <span>次</span>
       </div>
     </div>
@@ -448,33 +448,11 @@ tailwind.config = {
       }, 2500);
     }
 
-    // 访问量统计
-    (function() {
-      var visitEl = document.getElementById('footerVisits');
-      var totalEl = document.getElementById('footerTotalVisits');
-
-      function fetchVisits() {
-        fetch('/api/visits')
-          .then(function(r) { return r.json(); })
-          .then(function(data) {
-            if (visitEl) visitEl.textContent = data['index.html'] || 0;
-            if (totalEl) {
-              var total = 0;
-              for (var k in data) { total += data[k] || 0; }
-              totalEl.textContent = total;
-            }
-          })
-          .catch(function() {
-            if (visitEl) visitEl.textContent = '--';
-            if (totalEl) totalEl.textContent = '--';
-          });
-      }
-
-      fetch('/api/increment?page=index.html')
-        .then(function(r) { return r.json(); })
-        .then(fetchVisits)
-        .catch(fetchVisits);
-    })();
+    // 不蒜子访问统计
+    var bsz = document.createElement('script');
+    bsz.async = true;
+    bsz.src = '//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js';
+    document.body.appendChild(bsz);
   </script>
 
 </body>
