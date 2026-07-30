@@ -104,7 +104,7 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;background-color:#F0
 
 <footer class="border-t border-gray-200 py-4 px-4 bg-white/80 mt-8">
   <div class="max-w-6xl mx-auto text-center">
-    <span id="footerVisits" class="text-xs text-gray-400">👁 访问量：加载中...</span>
+    <span id="busuanzi_container_page_pv" style="display:none;" class="text-xs text-gray-400">👁 访问量：<span id="busuanzi_value_page_pv">--</span> 次</span>
   </div>
 </footer>
 
@@ -451,14 +451,10 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;background-color:#F0
     document.getElementById('fbInput').addEventListener('change',function(e){var f=e.target.files[0];if(!f)return;var r=new FileReader();r.onload=function(ev){try{processData(JSON.parse(ev.target.result));}catch(err){alert('JSON解析失败');}};r.readAsText(f);});
   }
 
-  (function updateVisits() {
-    var el = document.getElementById('footerVisits');
-    if (!el) return;
-    fetch('./api/visits').then(function(r){return r.json();}).then(function(c){
-      el.textContent = '👁 访问量：' + (c['forest-guardian.html'] || 0) + ' 次';
-    }).catch(function(){el.textContent = '👁 访问量：--';});
-    fetch('./api/increment?page=forest-guardian.html').catch(function(){});
-  })();
+  var bsz = document.createElement('script');
+  bsz.async = true;
+  bsz.src = '//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js';
+  document.body.appendChild(bsz);
 
   autoLoad();
 })();

@@ -128,7 +128,7 @@ body{font-family:'PingFang SC','Microsoft YaHei','Hiragino Sans GB',-apple-syste
     <span class="hidden md:inline">|</span>
     <span id="footerCount">--</span>
     <span class="hidden md:inline">|</span>
-    <span id="footerVisits" class="text-emerald-400">访问量：加载中...</span>
+    <span id="busuanzi_container_page_pv" style="display:none;" class="text-emerald-400">访问量：<span id="busuanzi_value_page_pv">--</span> 次</span>
   </div>
 </footer>
 
@@ -435,14 +435,10 @@ body{font-family:'PingFang SC','Microsoft YaHei','Hiragino Sans GB',-apple-syste
     renderCards();
   });
 
-  (function updateVisits() {
-    var el = document.getElementById('footerVisits');
-    if (!el) return;
-    fetch('./api/visits').then(function(r){return r.json();}).then(function(c){
-      el.textContent = '访问量：' + (c['forest-achievement.html'] || 0) + ' 次';
-    }).catch(function(){el.textContent = '访问量：--';});
-    fetch('./api/increment?page=forest-achievement.html').catch(function(){});
-  })();
+  var bsz = document.createElement('script');
+  bsz.async = true;
+  bsz.src = '//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js';
+  document.body.appendChild(bsz);
 
   autoLoad();
 })();
