@@ -218,6 +218,10 @@ tbody tr{cursor:pointer;transition:background 0.2s}
           </div>
         </div>
         <div class="header-actions">
+          <a href="index.html" class="btn btn-outline btn-sm" style="display:inline-flex;align-items:center;gap:4px;text-decoration:none;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+            返回导航
+          </a>
           <span class="data-source-badge" id="fileNameBadge">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
             <span id="fileNameDisplay">森林数据.json</span>
@@ -280,6 +284,11 @@ tbody tr{cursor:pointer;transition:background 0.2s}
         <div class="footer-item">
           <span id="footerCount">数据总量：0 条</span>
         </div>
+        <span class="footer-dot"></span>
+        <div class="footer-item">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          <span id="footerVisits">访问量：加载中...</span>
+        </div>
       </div>
     </div>
   </footer>
@@ -289,8 +298,11 @@ tbody tr{cursor:pointer;transition:background 0.2s}
   <div class="modal" id="modal"></div>
 </div>
 
+<script src="common.js"></script>
 <script>
 (function(){
+  var esc=ForestUtils.esc,escHtml=ForestUtils.escHtml,escAttr=ForestUtils.escAttr;
+  var avatarHtml=ForestUtils.avatarHtml,getCached=ForestUtils.getCached,setCached=ForestUtils.setCached;
   var rawData=[];
   var numericFields=[];
   var textFields=[];
@@ -400,6 +412,24 @@ tbody tr{cursor:pointer;transition:background 0.2s}
     xhr.send();
   }
 
+  function syncURL(){
+    var p=[];
+    if(currentSortField)p.push('sort='+encodeURIComponent(currentSortField));
+    if(sortOrder!=='desc')p.push('order='+sortOrder);
+    if(currentPage>1)p.push('page='+currentPage);
+    history.replaceState(null,'',p.length?'#'+p.join('&'):'.');
+  }
+  function loadURL(){
+    var h=location.hash.slice(1);
+    if(!h)return;
+    h.split('&').forEach(function(pair){
+      var kv=pair.split('='),k=kv[0],v=decodeURIComponent(kv[1]||'');
+      if(k==='sort')currentSortField=v;
+      else if(k==='order')sortOrder=v;
+      else if(k==='page')currentPage=parseInt(v)||1;
+    });
+  }
+
   function autoLoad(){
     fetch('./森林数据.json',{cache:'no-store'})
       .then(function(res){
@@ -407,14 +437,18 @@ tbody tr{cursor:pointer;transition:background 0.2s}
         return res.json();
       })
       .then(function(data){
+        setCached(data);
         processData(data);
-        showDashboard();
+        showDashboard();loadURL();
       })
       .catch(function(fetchErr){
+        var cd=getCached();
+        if(cd){processData(cd);showDashboard();loadURL();return;}
         tryXHR('./森林数据.json',function(xhrErr,data){
           if(data){
+            setCached(data);
             processData(data);
-            showDashboard();
+            showDashboard();loadURL();
           }else{
             var reason='fetch: '+fetchErr.message+' / XHR: '+(xhrErr?xhrErr.message:'-');
             showUpload(reason);
@@ -429,12 +463,12 @@ tbody tr{cursor:pointer;transition:background 0.2s}
     }else if(typeof data==='object'&&data!==null){
       if(data['保存时间'])saveTime=data['保存时间'];
       var keys=Object.keys(data);
-      for(var i=0;i<keys.length;i++){
+      for(let i=0;i<keys.length;i++){
         if(Array.isArray(data[keys[i]])&&data[keys[i]].length>0){rawData=data[keys[i]];break;}
       }
       if(rawData.length===0){
         var vals=Object.values(data);
-        for(var j=0;j<vals.length;j++){
+        for(let j=0;j<vals.length;j++){
           if(Array.isArray(vals[j])&&vals[j].length>0){rawData=vals[j];break;}
         }
       }
@@ -631,11 +665,12 @@ tbody tr{cursor:pointer;transition:background 0.2s}
     var pEnd=Math.min(totalPages,pStart+maxShow-1);
     if(pEnd-pStart<maxShow-1)pStart=Math.max(1,pEnd-maxShow+1);
     if(pStart>1){pagination.innerHTML+='<button class="page-btn" onclick="goPage(1)">1</button>';if(pStart>2)pagination.innerHTML+='<span class="page-info">...</span>';}
-    for(var p=pStart;p<=pEnd;p++){
+    for(let p=pStart;p<=pEnd;p++){
       pagination.innerHTML+='<button class="page-btn'+(p===currentPage?' active':'')+'" onclick="goPage('+p+')">'+p+'</button>';
     }
     if(pEnd<totalPages){if(pEnd<totalPages-1)pagination.innerHTML+='<span class="page-info">...</span>';pagination.innerHTML+='<button class="page-btn" onclick="goPage('+totalPages+')">'+totalPages+'</button>';}
     pagination.innerHTML+='<button class="page-btn" onclick="goPage('+(currentPage+1)+')" '+(currentPage===totalPages?'disabled':'')+'>下一页 &#8250;</button>';
+    syncURL();
   }
 
   window.goPage=function(p){
@@ -705,14 +740,14 @@ tbody tr{cursor:pointer;transition:background 0.2s}
     return n.toLocaleString('zh-CN',{maximumFractionDigits:6});
   }
 
-  function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
-  function escAttr(s){return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
-  function esc(s){return escHtml(s);}
-  function avatarHtml(user,size){
-    var s=size||40;
-    if(user.头像) return '<img src="'+esc(user.头像)+'" referrerpolicy="no-referrer" style="width:'+s+'px;height:'+s+'px;border-radius:50%;object-fit:cover" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'\'"><span style="display:none;width:'+s+'px;height:'+s+'px;border-radius:50%;background:linear-gradient(135deg,#d4f0d4,#a8d5a8);align-items:center;justify-content:center;font-size:'+(s*0.45)+'px;color:#3a7a3a">&nbsp;<i class="fa-solid fa-user"></i>&nbsp;</span>';
-    return '<span style="display:inline-flex;width:'+s+'px;height:'+s+'px;border-radius:50%;background:linear-gradient(135deg,#d4f0d4,#a8d5a8);align-items:center;justify-content:center;font-size:'+(s*0.45)+'px;color:#3a7a3a"><i class="fa-solid fa-user"></i></span>';
-  }
+  (function updateVisits() {
+    var el = document.getElementById('footerVisits');
+    if (!el) return;
+    fetch('./api/visits').then(function(r){return r.json();}).then(function(c){
+      el.textContent = '访问量：' + (c['data-dashboard.html'] || 0) + ' 次';
+    }).catch(function(){el.textContent = '访问量：--';});
+    fetch('./api/increment?page=data-dashboard.html').catch(function(){});
+  })();
 
   autoLoad();
 })();

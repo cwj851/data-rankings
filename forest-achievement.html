@@ -20,8 +20,7 @@ tailwind.config={
 }
 </script>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&display=swap');
-body{font-family:'Noto Sans SC',-apple-system,BlinkMacSystemFont,sans-serif}
+body{font-family:'PingFang SC','Microsoft YaHei','Hiragino Sans GB',-apple-system,BlinkMacSystemFont,sans-serif}
 .forest-bg{background:linear-gradient(175deg,#dcedc8 0%,#c5e1a5 20%,#aed581 40%,#9ccc65 60%,#c5e1a5 80%,#dcedc8 100%);position:relative}
 .forest-bg::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;opacity:0.12;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cpath d='M50 150 Q60 100 70 150 Q80 110 90 150 Q95 120 100 150' fill='none' stroke='%23388e3c' stroke-width='2'/%3E%3Ccircle cx='75' cy='145' r='8' fill='%23388e3c' opacity='0.4'/%3E%3Cpath d='M120 160 Q130 100 140 160 Q150 105 160 160 Q165 115 170 160' fill='none' stroke='%2343a047' stroke-width='2'/%3E%3Ccircle cx='145' cy='155' r='8' fill='%2343a047' opacity='0.4'/%3E%3C/svg%3E");background-size:200px 200px;background-repeat:repeat}
 .glass{background:rgba(255,255,255,0.55);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,0.5)}
@@ -57,12 +56,18 @@ body{font-family:'Noto Sans SC',-apple-system,BlinkMacSystemFont,sans-serif}
 
 <!-- Header -->
 <header class="py-8 px-4">
-  <div class="max-w-7xl mx-auto text-center">
-    <div class="inline-flex items-center gap-3 mb-3">
-      <span class="text-4xl">🌳</span>
-      <h1 class="text-3xl md:text-4xl font-black tracking-wide bg-gradient-to-r from-lime-400 via-emerald-400 to-sky-400 bg-clip-text text-transparent">森林成就墙</h1>
-      <span class="text-4xl">🌳</span>
+  <div class="max-w-7xl mx-auto">
+    <div class="text-left mb-2">
+      <a href="index.html" class="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-600 hover:text-emerald-800 bg-white/60 hover:bg-white/80 backdrop-blur rounded-full px-4 py-2 transition-all duration-300 no-underline border border-emerald-200/50">
+        <i class="fa-solid fa-arrow-left text-xs"></i> 返回导航
+      </a>
     </div>
+    <div class="text-center">
+      <div class="inline-flex items-center gap-3 mb-3">
+        <span class="text-4xl">🌳</span>
+        <h1 class="text-3xl md:text-4xl font-black tracking-wide bg-gradient-to-r from-lime-400 via-emerald-400 to-sky-400 bg-clip-text text-transparent">森林成就墙</h1>
+        <span class="text-4xl">🌳</span>
+      </div>
     <p class="text-gray-500 text-sm md:text-base">蚂蚁森林用户数据全量展示 · 大神成就一览</p>
     <div class="flex justify-center gap-4 mt-4 flex-wrap">
       <span class="glass rounded-full px-4 py-1.5 text-xs text-gray-700 font-medium flex items-center gap-2 border-lime-300/50">
@@ -72,6 +77,7 @@ body{font-family:'Noto Sans SC',-apple-system,BlinkMacSystemFont,sans-serif}
       <span class="glass rounded-full px-4 py-1.5 text-xs text-gray-600 font-medium flex items-center gap-2 border-amber-300/50">
         📅 <span id="headerDeadline">--</span>
       </span>
+    </div>
     </div>
   </div>
 </header>
@@ -121,6 +127,8 @@ body{font-family:'Noto Sans SC',-apple-system,BlinkMacSystemFont,sans-serif}
     <span id="footerTime">更新时间：--</span>
     <span class="hidden md:inline">|</span>
     <span id="footerCount">--</span>
+    <span class="hidden md:inline">|</span>
+    <span id="footerVisits" class="text-emerald-400">访问量：加载中...</span>
   </div>
 </footer>
 
@@ -134,25 +142,23 @@ body{font-family:'Noto Sans SC',-apple-system,BlinkMacSystemFont,sans-serif}
   </div>
 </div>
 
+<script src="common.js"></script>
 <script>
 (function(){
+  var esc=ForestUtils.esc,escHtml=ForestUtils.escHtml;
+  var maskUserId=ForestUtils.maskUserId,avatarHtml=ForestUtils.avatarHtml;
+  var getCached=ForestUtils.getCached,setCached=ForestUtils.setCached;
   var allData=[];
   var saveTime='';
   var currentPage=1;
   var pageSize=20;
   var searchQuery='';
   var sortField='总能量';
+  var animateDone=false;
 
   var searchInput=document.getElementById('searchInput');
   var sortSelect=document.getElementById('sortBy');
   var loadingOverlay=document.getElementById('loadingOverlay');
-
-  function maskUserId(val){
-    if(!val||typeof val!=='string')return val;
-    if(val.length>=8)return val.substring(0,3)+'****'+val.substring(val.length-4);
-    if(val.length>=4)return val.substring(0,1)+'**'+val.substring(val.length-1);
-    return '***';
-  }
 
   function formatNum(n){
     if(typeof n!=='number')return String(n);
@@ -190,14 +196,17 @@ body{font-family:'Noto Sans SC',-apple-system,BlinkMacSystemFont,sans-serif}
       return '<div class="glass rounded-2xl p-3 text-center '+it.bg+' card-hover cursor-default border-2 border-transparent hover:border-lime-300/40">'+
         '<div class="text-xl mb-1">'+it.icon+'</div>'+
         '<div class="text-xs text-gray-500 mb-1">'+it.label+'</div>'+
-        '<div class="text-sm font-bold '+it.txt+' count-target" data-target="'+it.value+'">0</div>'+
+        '<div class="text-sm font-bold '+it.txt+(animateDone?'':' count-target')+'"'+(animateDone?'':' data-target="'+it.value+'"')+'>'+(animateDone?formatNum(it.value):'0')+'</div>'+
         (it.suffix?'<div class="text-[10px] text-gray-400">'+it.suffix+'</div>':'')+
       '</div>';
     }).join('');
     animateCounters();
   }
 
+  var _sortedCache=null,_sortedKey='';
   function getSortedData(){
+    var key=sortField+'|'+searchQuery;
+    if(key===_sortedKey&&_sortedCache)return _sortedCache;
     var data=allData.slice();
     if(searchQuery){
       var q=searchQuery.toLowerCase();
@@ -210,6 +219,8 @@ body{font-family:'Noto Sans SC',-apple-system,BlinkMacSystemFont,sans-serif}
       var va=a[sortField]||0,vb=b[sortField]||0;
       return vb-va;
     });
+    _sortedKey=key;
+    _sortedCache=data;
     return data;
   }
 
@@ -279,7 +290,7 @@ body{font-family:'Noto Sans SC',-apple-system,BlinkMacSystemFont,sans-serif}
     return '<div class="'+bgClass+' rounded-xl p-2 text-center card-hover">'+
       '<div class="text-base mb-0.5">'+icon+'</div>'+
       '<div class="text-[10px] opacity-60">'+label+'</div>'+
-      '<div class="text-xs font-bold count-target" data-target="'+(value||0)+'">0</div>'+
+      '<div class="text-xs font-bold'+(animateDone?'':' count-target')+'"'+(animateDone?'':' data-target="'+(value||0)+'"')+'>'+(animateDone?formatNum(value||0):'0')+'</div>'+
     '</div>';
   }
 
@@ -313,12 +324,13 @@ body{font-family:'Noto Sans SC',-apple-system,BlinkMacSystemFont,sans-serif}
     var pStart=Math.max(1,currentPage-Math.floor(maxShow/2));
     var pEnd=Math.min(totalPages,pStart+maxShow-1);
     if(pEnd-pStart<maxShow-1)pStart=Math.max(1,pEnd-maxShow+1);
-    for(var p=pStart;p<=pEnd;p++){
+    for(let p=pStart;p<=pEnd;p++){
       html+='<button class="rounded-xl px-3 py-2 text-sm '+(p===currentPage?'bg-lime-400 text-white font-semibold shadow-md shadow-lime-300/30':'glass text-gray-500 hover:bg-lime-100/50')+'" onclick="window.goPage('+p+')">'+p+'</button>';
     }
     html+='<button class="glass rounded-xl px-4 py-2 text-sm text-gray-500 hover:bg-lime-100/50 disabled:opacity-30" onclick="window.goPage('+(currentPage+1)+')" '+(currentPage===totalPages?'disabled':'')+'>下一页</button>';
     html+='<span class="text-xs text-forest-600/50 self-center ml-2">共 '+totalFiltered+' 人</span>';
     pagination.innerHTML=html;
+    syncURL();
   }
 
   window.goPage=function(p){
@@ -347,28 +359,51 @@ body{font-family:'Noto Sans SC',-apple-system,BlinkMacSystemFont,sans-serif}
       if(arr.length>0){allData=arr;}
       else{
         var keys=Object.keys(data);
-        for(var i=0;i<keys.length;i++){
+        for(let i=0;i<keys.length;i++){
           if(Array.isArray(data[keys[i]])&&data[keys[i]].length>0){allData=data[keys[i]];break;}
         }
       }
     }
+    _sortedCache=null;
     if(allData.length===0){alert('未找到有效数据');return;}
     buildSummary();
     renderCards();
+    animateDone=true;
     updateFooter();
     loadingOverlay.style.display='none';
+    loadURL();
+  }
+
+  function syncURL(){
+    var p=[];
+    if(sortField!=='总能量')p.push('sort='+encodeURIComponent(sortField));
+    if(searchQuery)p.push('q='+encodeURIComponent(searchQuery));
+    if(currentPage>1)p.push('page='+currentPage);
+    history.replaceState(null,'',p.length?'#'+p.join('&'):'.');
+  }
+  function loadURL(){
+    var h=location.hash.slice(1);
+    if(!h)return;
+    h.split('&').forEach(function(pair){
+      var kv=pair.split('='),k=kv[0],v=decodeURIComponent(kv[1]||'');
+      if(k==='sort')sortField=v;
+      else if(k==='q'){searchQuery=v;searchInput.value=v;}
+      else if(k==='page')currentPage=parseInt(v)||1;
+    });
   }
 
   function autoLoad(){
     fetch('./森林数据.json',{cache:'no-store'})
       .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
-      .then(function(d){processData(d);})
+      .then(function(d){setCached(d);processData(d);})
       .catch(function(fe){
+        var cd=getCached();
+        if(cd){processData(cd);return;}
         var xhr=new XMLHttpRequest();
         xhr.open('GET','./森林数据.json',true);
         xhr.onload=function(){
           if(xhr.status===200||xhr.status===0){
-            try{processData(JSON.parse(xhr.responseText));}catch(e){showFallback();}
+            try{var d=JSON.parse(xhr.responseText);setCached(d);processData(d);}catch(e){showFallback();}
           }else{showFallback();}
         };
         xhr.onerror=function(){showFallback();};
@@ -400,13 +435,14 @@ body{font-family:'Noto Sans SC',-apple-system,BlinkMacSystemFont,sans-serif}
     renderCards();
   });
 
-  function escHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
-
-  function avatarHtml(user,size){
-    var s=size||40;
-    if(user.头像) return '<img src="'+escHtml(user.头像)+'" referrerpolicy="no-referrer" style="width:'+s+'px;height:'+s+'px;border-radius:50%;object-fit:cover;display:inline-block" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'inline-flex\'"><span style="display:none;width:'+s+'px;height:'+s+'px;border-radius:50%;background:linear-gradient(135deg,#d4f0d4,#a8d5a8);align-items:center;justify-content:center;font-size:'+(s*0.45)+'px;color:#3a7a3a"><i class="fa-solid fa-user"></i></span>';
-    return '<span style="display:inline-flex;width:'+s+'px;height:'+s+'px;border-radius:50%;background:linear-gradient(135deg,#d4f0d4,#a8d5a8);align-items:center;justify-content:center;font-size:'+(s*0.45)+'px;color:#3a7a3a"><i class="fa-solid fa-user"></i></span>';
-  }
+  (function updateVisits() {
+    var el = document.getElementById('footerVisits');
+    if (!el) return;
+    fetch('./api/visits').then(function(r){return r.json();}).then(function(c){
+      el.textContent = '访问量：' + (c['forest-achievement.html'] || 0) + ' 次';
+    }).catch(function(){el.textContent = '访问量：--';});
+    fetch('./api/increment?page=forest-achievement.html').catch(function(){});
+  })();
 
   autoLoad();
 })();

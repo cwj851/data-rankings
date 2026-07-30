@@ -11,7 +11,7 @@ tailwind.config={theme:{extend:{colors:{'forest-green':'#62C553','forest-dark':'
 </script>
 <style>
 body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;background-color:#F0F9F0;overflow-x:hidden}
-.leaf{position:fixed;top:-10%;z-index:-1;opacity:0.5;animation:fall linear infinite}
+.leaf{position:fixed;top:-10%;z-index:-1;opacity:0.5;animation:fall linear infinite;will-change:transform;pointer-events:none}
 @keyframes fall{0%{transform:translate(0,0) rotate(0deg)}100%{transform:translate(80px,110vh) rotate(360deg)}}
 .card-glow:hover{box-shadow:0 0 15px rgba(98,197,83,0.4);transform:translateY(-5px)}
 .no-scrollbar::-webkit-scrollbar{display:none}
@@ -32,6 +32,9 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;background-color:#F0
       <h1 class="text-xl font-bold text-forest-dark tracking-wide">绿色能量榜</h1>
       <span class="text-xs text-gray-400 ml-2" id="save-time-bar">数据截至：加载中...</span>
     </div>
+    <a href="index.html" class="inline-flex items-center gap-1.5 text-sm font-medium text-forest-dark hover:text-white bg-forest-green/10 hover:bg-forest-green rounded-lg px-3 py-1.5 transition-all duration-300 no-underline">
+      <i class="fa-solid fa-arrow-left text-xs"></i> 返回导航
+    </a>
   </div>
   <div class="max-w-6xl mx-auto px-4 py-2 overflow-x-auto no-scrollbar flex gap-3" id="tab-container"></div>
 </header>
@@ -99,8 +102,17 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;background-color:#F0
   </div>
 </div>
 
+<footer class="border-t border-gray-200 py-4 px-4 bg-white/80 mt-8">
+  <div class="max-w-6xl mx-auto text-center">
+    <span id="footerVisits" class="text-xs text-gray-400">👁 访问量：加载中...</span>
+  </div>
+</footer>
+
+<script src="common.js"></script>
 <script>
 (function(){
+  var esc=ForestUtils.esc,maskUserId=ForestUtils.maskUserId;
+  var avatarHtml=ForestUtils.avatarHtml,getCached=ForestUtils.getCached,setCached=ForestUtils.setCached;
   var userList=[];
   var saveTime='';
   var currentTab='总能量';
@@ -118,13 +130,6 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;background-color:#F0
     {key:'海洋',label:'海洋公益',icon:'fa-water',color:'text-cyan-500'},
     {key:'森林',label:'植树造林',icon:'fa-seedling',color:'text-emerald-500'}
   ];
-
-  function maskUserId(v){
-    if(!v||typeof v!=='string')return v;
-    if(v.length>=8)return v.substring(0,3)+'****'+v.substring(v.length-4);
-    if(v.length>=4)return v.substring(0,1)+'**'+v.substring(v.length-1);
-    return '***';
-  }
 
   function fmtNum(n){
     if(typeof n!=='number')return String(n);
@@ -153,7 +158,10 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;background-color:#F0
     else renderList();
   };
 
+  var _sortedCache=null,_sortedKey='';
   function getSorted(){
+    var key=currentTab+'|'+tableSortField+'|'+tableSortAsc;
+    if(key===_sortedKey&&_sortedCache)return _sortedCache;
     var arr=userList.slice();
     var sortKey=currentTab==='all'?tableSortField:currentTab;
     var asc=currentTab==='all'?tableSortAsc:false;
@@ -162,6 +170,8 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;background-color:#F0
       if(typeof va==='string'){va=va.toLowerCase();vb=vb.toLowerCase();return asc?va.localeCompare(vb):vb.localeCompare(va);}
       return asc?va-vb:vb-va;
     });
+    _sortedKey=key;
+    _sortedCache=arr;
     return arr;
   }
 
@@ -231,9 +241,10 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;background-color:#F0
     if(currentPage>1)html+='<button class="px-4 py-2 rounded-full bg-white text-gray-600 text-sm font-medium hover:bg-gray-100 transition" onclick="goPage('+(currentPage-1)+')"><i class="fa-solid fa-chevron-left mr-1"></i>上一页</button>';
     var ms=5,ps=Math.max(1,currentPage-Math.floor(ms/2)),pe=Math.min(totalPages,ps+ms-1);
     if(pe-ps<ms-1)ps=Math.max(1,pe-ms+1);
-    for(var i=ps;i<=pe;i++)html+='<button class="w-10 h-10 rounded-full text-sm font-semibold transition '+(i===currentPage?'bg-forest-green text-white shadow-md':'bg-white text-gray-500 hover:bg-gray-100')+'" onclick="goPage('+i+')">'+i+'</button>';
+    for(let i=ps;i<=pe;i++)html+='<button class="w-10 h-10 rounded-full text-sm font-semibold transition '+(i===currentPage?'bg-forest-green text-white shadow-md':'bg-white text-gray-500 hover:bg-gray-100')+'" onclick="goPage('+i+')">'+i+'</button>';
     if(currentPage<totalPages)html+='<button class="px-4 py-2 rounded-full bg-white text-gray-600 text-sm font-medium hover:bg-gray-100 transition" onclick="goPage('+(currentPage+1)+')">下一页<i class="fa-solid fa-chevron-right ml-1"></i></button>';
     p.innerHTML=html;
+    syncURL();
   }
 
   window.goPage=function(p){
@@ -241,7 +252,7 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;background-color:#F0
     var total=Math.ceil(sorted.length/pageSize)||1;
     if(p<1||p>total)return;
     currentPage=p;
-    renderList();
+    renderList();syncURL();
     window.scrollTo({top:document.getElementById('rank-list').offsetTop-120,behavior:'smooth'});
   };
 
@@ -249,7 +260,7 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;background-color:#F0
     if(tableSortField===field)tableSortAsc=!tableSortAsc;
     else{tableSortField=field;tableSortAsc=false;}
     currentPage=1;
-    renderTable();
+    renderTable();syncURL();
   };
 
   function renderTable(){
@@ -300,7 +311,7 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;background-color:#F0
     }).join('');
 
     wrap.innerHTML='<table style="width:100%;border-collapse:collapse;font-size:12px;min-width:1000px"><thead style="background:#f5faf5;position:sticky;top:0;z-index:1">'+th+'</thead><tbody>'+tb+'</tbody></table><style>#table-wrap td,#table-wrap th{padding:8px 10px;border-bottom:1px solid #f0f4f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#table-wrap td:first-child,#table-wrap th:first-child{padding:4px 6px;text-align:center;overflow:visible;text-overflow:clip}#table-wrap td:nth-child(2),#table-wrap th:nth-child(2){padding:4px 6px;overflow:visible;text-overflow:clip}#table-wrap th{font-weight:700;color:#5a7a5a;font-size:11px;text-transform:uppercase;letter-spacing:0.3px}#table-wrap tr:hover td{background:#f8fdf8}</style>';
-    renderPagination(totalPages,sorted.length);
+    renderPagination(totalPages,sorted.length);syncURL();
   }
 
   function updateStats(){
@@ -365,7 +376,7 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;background-color:#F0
 
   function initBackground(){
     var container=document.getElementById('bg-animation');
-    for(var i=0;i<15;i++){
+    for(let i=0;i<15;i++){
       var leaf=document.createElement('div');
       leaf.classList.add('leaf');
       leaf.innerHTML='<i class="fa-solid fa-leaf text-green-300"></i>';
@@ -386,41 +397,68 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;background-color:#F0
       if(arr.length>0){userList=arr;}
       else{
         var keys=Object.keys(data);
-        for(var i=0;i<keys.length;i++){if(Array.isArray(data[keys[i]])&&data[keys[i]].length>0){userList=data[keys[i]];break;}}
+        for(let i=0;i<keys.length;i++){if(Array.isArray(data[keys[i]])&&data[keys[i]].length>0){userList=data[keys[i]];break;}}
       }
     }
+    _sortedCache=null;
     if(userList.length===0){alert('未找到有效数据');return;}
     initBackground();
     renderTabs();
     renderList();
     updateStats();
+    loadURL();
+  }
+
+  function syncURL(){
+    var p=[];
+    if(currentTab!=='总能量')p.push('tab='+encodeURIComponent(currentTab));
+    if(currentPage>1)p.push('page='+currentPage);
+    history.replaceState(null,'',p.length?'#'+p.join('&'):'.');
+  }
+  function loadURL(){
+    var h=location.hash.slice(1);
+    if(!h)return;
+    h.split('&').forEach(function(pair){
+      var kv=pair.split('='),k=kv[0],v=decodeURIComponent(kv[1]||'');
+      if(k==='tab')currentTab=v;
+      else if(k==='page')currentPage=parseInt(v)||1;
+    });
   }
 
   function autoLoad(){
     fetch('./森林数据.json',{cache:'no-store'})
       .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
-      .then(function(d){processData(d);})
+      .then(function(d){setCached(d);processData(d);})
       .catch(function(){
+        var cd=getCached();
+        if(cd){processData(cd);return;}
         var xhr=new XMLHttpRequest();
         xhr.open('GET','./森林数据.json',true);
-        xhr.onload=function(){if(xhr.status===200||xhr.status===0){try{processData(JSON.parse(xhr.responseText));}catch(e){fallback();}}else{fallback();}};
+        xhr.onload=function(){if(xhr.status===200||xhr.status===0){try{var d=JSON.parse(xhr.responseText);setCached(d);processData(d);}catch(e){fallback();}}else{fallback();}};
         xhr.onerror=function(){fallback();};
         xhr.send();
       });
   }
+
+  document.addEventListener('visibilitychange',function(){
+    var leaves=document.querySelectorAll('.leaf');
+    var paused=document.hidden?'paused':'';
+    leaves.forEach(function(l){l.style.animationPlayState=paused;});
+  });
 
   function fallback(){
     document.getElementById('rank-list').innerHTML='<div class="text-center py-20"><p class="text-gray-400 text-lg mb-2">未能自动加载数据</p><p class="text-gray-300 text-sm mb-4">请运行 <code class="bg-gray-100 px-2 py-1 rounded">python3 -m http.server 8000</code></p><input type="file" id="fbInput" accept=".json" style="display:none"><button onclick="document.getElementById(\'fbInput\').click()" class="bg-forest-green text-white px-6 py-2 rounded-full font-medium hover:bg-forest-dark transition">手动选择 JSON 文件</button></div>';
     document.getElementById('fbInput').addEventListener('change',function(e){var f=e.target.files[0];if(!f)return;var r=new FileReader();r.onload=function(ev){try{processData(JSON.parse(ev.target.result));}catch(err){alert('JSON解析失败');}};r.readAsText(f);});
   }
 
-  function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
-
-  function avatarHtml(user,size){
-    var s=size||40;
-    if(user.头像) return '<img src="'+esc(user.头像)+'" referrerpolicy="no-referrer" style="display:block;width:'+s+'px;height:'+s+'px;border-radius:50%;object-fit:cover;flex-shrink:0" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'inline-flex\'"><span style="display:none;width:'+s+'px;height:'+s+'px;border-radius:50%;background:linear-gradient(135deg,#d4f0d4,#a8d5a8);align-items:center;justify-content:center;font-size:'+(s*0.45)+'px;color:#3a7a3a">&nbsp;<i class="fa-solid fa-user"></i>&nbsp;</span>';
-    return '<span style="display:inline-flex;width:'+s+'px;height:'+s+'px;border-radius:50%;background:linear-gradient(135deg,#d4f0d4,#a8d5a8);align-items:center;justify-content:center;font-size:'+(s*0.45)+'px;color:#3a7a3a;flex-shrink:0"><i class="fa-solid fa-user"></i></span>';
-  }
+  (function updateVisits() {
+    var el = document.getElementById('footerVisits');
+    if (!el) return;
+    fetch('./api/visits').then(function(r){return r.json();}).then(function(c){
+      el.textContent = '👁 访问量：' + (c['forest-guardian.html'] || 0) + ' 次';
+    }).catch(function(){el.textContent = '👁 访问量：--';});
+    fetch('./api/increment?page=forest-guardian.html').catch(function(){});
+  })();
 
   autoLoad();
 })();

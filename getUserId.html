@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            text-align: center;
+            padding: 60px 20px;
+        }
+        button {
+            padding: 12px 32px;
+            font-size: 16px;
+            border-radius: 6px;
+            border: none;
+            background: #108eee;
+            color: #fff;
+            cursor: pointer;
+        }
+        #res {
+            display: block;
+            margin-top: 20px;
+            font-size: 14px;
+            word-break: break-all;
+        }
+    </style>
+</head>
+<body>
+    <button onclick="getContactUserId()">获取联系人UserId</button>
+    <span id="res"></span>
+
+    <script src="https://a.alipayobjects.com/g/h5-lib/alipayjsapi/3.0.6/alipayjsapi.min.js"></script>
+    <script>
+        function getContactUserId() {
+            ap.chooseAlipayContact(1, function(result) {
+                if (typeof(result["error"]) != "undefined") {
+                    if (result["error"] == 11) return;
+                    else if (result["error"] == 2001) alert("获取支付宝联系人失败。（您未授予本工具获取支付宝联系人权限）");
+                    else if (result["error"] == 2002) alert("由于您设置了保持拒绝授权，导致无法再次弹起授权窗口。可通过手机设置-应用管理-支付宝-清除数据来解决");
+                    return;
+                }
+                if (result["contacts"][0]["userId"].length == 16) {
+                    document.getElementById("res").innerHTML = "userId：" + result["contacts"][0]["userId"];
+                }
+            });
+        }
+    </script>
+</body>
+</html>
