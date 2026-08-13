@@ -199,7 +199,7 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;background-color:#F0
       var percent=Math.min((user[currentTab]/maxVal)*100,100);
       var barColor=currentTab==='总能量'||currentTab==='当前能量'?'#facc15':currentTab==='总证书'?'#3b82f6':currentTab==='古树'?'#4A9E3F':currentTab==='动物'?'#a855f7':currentTab==='海洋'?'#06b6d4':currentTab==='森林'?'#10b981':'#62C553';
 
-      return '<div class="relative p-4 rounded-2xl shadow-sm card-glow transition-all duration-300 cursor-pointer '+cardClass+'" style="animation:slideUp 0.5s ease-out '+(idx*0.04)+'s backwards" onclick="showDetail('+JSON.stringify(user.userId)+','+JSON.stringify(user.昵称||'')+')">'+
+      return '<div class="relative p-4 rounded-2xl shadow-sm card-glow transition-all duration-300 cursor-pointer '+cardClass+'" style="animation:slideUp 0.5s ease-out '+(idx*0.04)+'s backwards" onclick="showDetail('+esc(JSON.stringify(String(user.userId)))+','+esc(JSON.stringify(user.昵称||''))+')">'+
         rankBadge+
         '<div class="flex items-center justify-between mb-3 pl-10">'+
           '<div class="flex items-center gap-3 min-w-0">'+
