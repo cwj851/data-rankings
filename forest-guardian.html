@@ -199,7 +199,7 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;background-color:#F0
       var percent=Math.min((user[currentTab]/maxVal)*100,100);
       var barColor=currentTab==='总能量'||currentTab==='当前能量'?'#facc15':currentTab==='总证书'?'#3b82f6':currentTab==='古树'?'#4A9E3F':currentTab==='动物'?'#a855f7':currentTab==='海洋'?'#06b6d4':currentTab==='森林'?'#10b981':'#62C553';
 
-      return '<div class="relative p-4 rounded-2xl shadow-sm card-glow transition-all duration-300 cursor-pointer '+cardClass+'" style="animation:slideUp 0.5s ease-out '+(idx*0.04)+'s backwards" onclick="showDetail(\''+user.userId+'\')">'+
+      return '<div class="relative p-4 rounded-2xl shadow-sm card-glow transition-all duration-300 cursor-pointer '+cardClass+'" style="animation:slideUp 0.5s ease-out '+(idx*0.04)+'s backwards" onclick="showDetail('+JSON.stringify(user.userId)+','+JSON.stringify(user.昵称||'')+')">'+
         rankBadge+
         '<div class="flex items-center justify-between mb-3 pl-10">'+
           '<div class="flex items-center gap-3 min-w-0">'+
@@ -336,8 +336,16 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;background-color:#F0
     requestAnimationFrame(step);
   }
 
-  window.showDetail=function(uid){
-    var user=userList.find(function(u){return u.userId===uid;});
+  window.showDetail=function(uid,nick){
+    var user=null;
+    // 优先：userId + 昵称 双重匹配（解决重复 userId 场景）
+    if(nick!==undefined&&nick!==null&&nick!==''){
+      user=userList.find(function(u){return u.userId===uid&&u.昵称===nick;});
+    }
+    // 回退：仅 userId（兼容数据加载后昵称被修改的情况）
+    if(!user){user=userList.find(function(u){return u.userId===uid;});}
+    // 再回退：仅昵称（兼容 userId 缺失或显示混淆）
+    if(!user&&nick){user=userList.find(function(u){return u.昵称===nick;});}
     if(!user)return;
     document.getElementById('modal-nickname').innerText=user.昵称;
     document.getElementById('modal-avatar').innerHTML=avatarHtml(user,80);
