@@ -132,6 +132,7 @@ tbody tr{cursor:pointer;transition:background 0.2s}
 .detail-item.full{grid-column:1/-1}
 .detail-key{font-size:11px;color:var(--text-muted);text-transform:uppercase;margin-bottom:4px;letter-spacing:0.5px}
 .detail-value{font-size:15px;color:var(--text-primary);font-weight:500;word-break:break-all}
+.row-hidden{display:none !important}
 
 .footer{padding:24px 0 32px;border-top:1px solid rgba(255,107,53,0.1);text-align:center}
 .footer-content{display:flex;align-items:center;justify-content:center;gap:20px;flex-wrap:wrap}
@@ -417,7 +418,12 @@ tbody tr{cursor:pointer;transition:background 0.2s}
     if(currentSortField)p.push('sort='+encodeURIComponent(currentSortField));
     if(sortOrder!=='desc')p.push('order='+sortOrder);
     if(currentPage>1)p.push('page='+currentPage);
-    history.replaceState(null,'',p.length?'#'+p.join('&'):'.');
+    try{
+      // file:// 协议下 replaceState 会抛 SecurityError，需跳过
+      if(location.protocol!=='file:'){
+        history.replaceState(null,'',p.length?'#'+p.join('&'):'.');
+      }
+    }catch(e){}
   }
   function loadURL(){
     var h=location.hash.slice(1);
@@ -703,7 +709,33 @@ tbody tr{cursor:pointer;transition:background 0.2s}
       '<div class="modal-body"><div style="display:flex;align-items:center;gap:14px;margin-bottom:20px">'+avatarHtml(item,80)+'<div><div style="font-size:18px;font-weight:600;color:var(--text-primary)">'+escHtml(title)+'</div><div style="font-size:12px;color:var(--text-muted);margin-top:2px">'+escHtml(fileName)+'</div></div></div><div class="detail-grid">'+
       allFields.map(function(f,fi){
         var isFull=allFields.length%2!==0&&fi===allFields.length-1;
-        var display=getDisplayValue(f,item[f],true);
+        var v=item[f];
+        // 对象类型字段（如 森林证书明细）：格式化为明细列表（支持展开/收起）
+        if(v!==null&&typeof v==='object'){
+          var entries=Object.keys(v).map(function(k){return {name:k,value:v[k]};})
+            .filter(function(e){return e.value!==null&&e.value!==undefined&&e.value!=='';})
+            .sort(function(a,b){return (Number(b.value)||0)-(Number(a.value)||0);});
+          if(entries.length===0){
+            return '<div class="detail-item full"><div class="detail-key">'+escHtml(f)+'</div><div class="detail-value">--</div></div>';
+          }
+          var collapseId='detailCollapse_'+f;
+          var totalEntries=entries.length;
+          var rows=entries.map(function(e,i){
+            var val=e.value;
+            var valStr=typeof val==='number'?formatNum(val):escHtml(String(val));
+            var hidden=i<PREVIEW_COUNT?'':'row-hidden';
+            return '<div data-collapse-row="'+collapseId+'" class="'+hidden+'" style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(255,107,53,0.08);font-size:13px"><span style="color:var(--text-secondary)">'+escHtml(e.name)+'</span><span style="color:var(--text-primary);font-weight:500">'+valStr+'</span></div>';
+          }).join('');
+          return '<div class="detail-item full">'+
+            '<div style="display:flex;justify-content:space-between;align-items:center">'+
+            '<div class="detail-key" style="margin-bottom:0">'+escHtml(f)+'</div>'+
+            (totalEntries>PREVIEW_COUNT?
+              '<button class="detail-toggle" onclick="toggleDetailField(\''+collapseId+'\')" data-toggle="'+collapseId+'" style="font-size:12px;color:var(--accent);background:none;border:1px solid var(--accent);border-radius:12px;padding:2px 10px;cursor:pointer">展开全部（'+totalEntries+' 项）</button>':'')+
+            '</div>'+
+            '<div class="detail-value" style="margin-top:6px">'+rows+'</div>'+
+            '</div>';
+        }
+        var display=getDisplayValue(f,v,true);
         return '<div class="detail-item'+(isFull?' full':'')+'"><div class="detail-key">'+escHtml(f)+(sensitiveFields.indexOf(f)!==-1?' (脱敏)':'')+'</div><div class="detail-value">'+escHtml(display)+'</div></div>';
       }).join('')+
       '</div></div>';
@@ -711,6 +743,30 @@ tbody tr{cursor:pointer;transition:background 0.2s}
   };
 
   window.closeModal=function(){document.getElementById('modalOverlay').style.display='none';};
+
+  // 展开/收起对象型明细字段
+  var PREVIEW_COUNT=5;
+  window.toggleDetailField=function(id){
+    var rows=document.querySelectorAll('[data-collapse-row="'+id+'"]');
+    var btn=document.querySelector('[data-toggle="'+id+'"]');
+    var hasHidden=false;
+    rows.forEach(function(r){
+      if(r.classList.contains('row-hidden'))hasHidden=true;
+    });
+    rows.forEach(function(r,i){
+      if(hasHidden){
+        // 展开：全部显示
+        r.classList.remove('row-hidden');
+      }else{
+        // 收起：只保留前 PREVIEW_COUNT 条，其余隐藏
+        if(i>=PREVIEW_COUNT)r.classList.add('row-hidden');
+        else r.classList.remove('row-hidden');
+      }
+    });
+    if(btn){
+      btn.textContent=hasHidden?'收起':'展开全部（'+rows.length+' 项）';
+    }
+  };
 
   function updateFooter(){
     document.getElementById('footerSource').textContent='数据来源：'+(fileName||'用户上传');

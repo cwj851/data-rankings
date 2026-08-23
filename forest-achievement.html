@@ -212,7 +212,7 @@ body{font-family:'PingFang SC','Microsoft YaHei','Hiragino Sans GB',-apple-syste
       var q=searchQuery.toLowerCase();
       data=data.filter(function(u){
         return (u['昵称']||'').toLowerCase().indexOf(q)!==-1||
-               (u['昵称-支']||'').toLowerCase().indexOf(q)!==-1;
+               (u['昵称 - 支']||u['昵称-支']||'').toLowerCase().indexOf(q)!==-1;
       });
     }
     data.sort(function(a,b){
@@ -248,7 +248,7 @@ body{font-family:'PingFang SC','Microsoft YaHei','Hiragino Sans GB',-apple-syste
               '<div class="text-xs text-gray-500 truncate">ID: '+escHtml(maskUserId(u['userId']))+'</div>'+
             '</div>'+
           '</div>'+
-          (u['昵称-支']!==u['昵称']?'<div class="text-xs text-rose-500/70 ml-14 truncate">@'+escHtml(u['昵称-支']||'')+'</div>':'')+
+          (u['昵称 - 支']&&u['昵称 - 支']!==u['昵称']?'<div class="text-xs text-rose-500/70 ml-14 truncate">@'+escHtml(u['昵称 - 支']||u['昵称-支']||'')+'</div>':'')+
         '</div>'+
         '<div class="leaf-divider"></div>'+
         '<div class="mb-3">'+
@@ -379,7 +379,12 @@ body{font-family:'PingFang SC','Microsoft YaHei','Hiragino Sans GB',-apple-syste
     if(sortField!=='总能量')p.push('sort='+encodeURIComponent(sortField));
     if(searchQuery)p.push('q='+encodeURIComponent(searchQuery));
     if(currentPage>1)p.push('page='+currentPage);
-    history.replaceState(null,'',p.length?'#'+p.join('&'):'.');
+    try{
+      // file:// 协议下 replaceState 会抛 SecurityError，需跳过
+      if(location.protocol!=='file:'){
+        history.replaceState(null,'',p.length?'#'+p.join('&'):'.');
+      }
+    }catch(e){}
   }
   function loadURL(){
     var h=location.hash.slice(1);
@@ -417,8 +422,23 @@ body{font-family:'PingFang SC','Microsoft YaHei','Hiragino Sans GB',-apple-syste
       var f=e.target.files[0];if(!f)return;
       var reader=new FileReader();
       reader.onload=function(ev){
-        try{processData(JSON.parse(ev.target.result));}catch(err){alert('JSON 解析失败');}
+        var raw=ev.target.result;
+        // 用 TextDecoder 解码：自动去除 UTF-8 BOM，避免 JSON.parse 因 BOM 失败
+        var text=typeof raw==='string'?raw:new TextDecoder('utf-8').decode(raw);
+        // 去除首尾空白（BOM 或多余换行）
+        text=text.replace(/^\uFEFF/,'').trim();
+        if(!text){alert('文件为空');return;}
+        var data;
+        try{data=JSON.parse(text);}
+        catch(err){
+          // 尝试去除常见非法字符后重试
+          try{data=JSON.parse(text.replace(/^\uFEFF/,'').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g,'').trim());}
+          catch(err2){alert('JSON 解析失败：文件不是有效的 JSON 格式，或编码不是 UTF-8（请另存为 UTF-8 编码后重试）');return;}
+        }
+        try{processData(data);}
+        catch(err3){alert('数据解析成功，但处理时出错：'+err3.message);}
       };
+      // 先按文本读（自动处理 UTF-8/BOM）；读不出来再用二进制
       reader.readAsText(f);
     });
   }
